@@ -11,6 +11,8 @@ body{font-size:14px}
 .wrap{max-width:1280px;margin:auto;padding:12px}
 
 /* Main operational area */
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.section-head h2{margin:0}.court-manage{display:flex;align-items:center;gap:6px}.court-manage b{font-size:12px;color:#64748b}.court-finish-buttons{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:3px}.court-finish-buttons .dark{margin:0!important}.court-manage .smallbtn{margin:0!important;padding:6px 9px}
+
 .box{background:#fff;border:0;border-radius:14px;padding:12px;margin-bottom:9px;box-shadow:0 1px 3px rgba(15,23,42,.07)}
 .box>h2{font-size:15px;margin:0 0 9px;font-weight:900;letter-spacing:.1px}
 .playing{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -133,16 +135,13 @@ textarea{width:100%;min-height:55px;border:1px solid var(--line);border-radius:9
 </head>
 <body><div class="wrap">
 
-<div class="box"><h2>🏸 PLAYING</h2><div class="playing">
-<div class="court"><div class="court-title editable-court" id="courtTitle1" title="คลิกเพื่อแก้ชื่อสนาม">สนาม 1</div><div class="vs-wrap"><div id="c1a" class="side"></div><div class="vs">VS</div><div id="c1b" class="side"></div></div></div>
-<div class="court"><div class="court-title editable-court" id="courtTitle2" title="คลิกเพื่อแก้ชื่อสนาม">สนาม 2</div><div class="vs-wrap"><div id="c2a" class="side"></div><div class="vs">VS</div><div id="c2b" class="side"></div></div></div>
-</div></div>
+<div class="box"><div class="section-head"><h2>🏸 PLAYING</h2><div class="court-manage"><button type="button" id="removeCourt" class="smallbtn">− สนาม</button><b id="courtCountLabel">2 สนาม</b><button type="button" id="addCourt" class="smallbtn blue">+ สนาม</button></div></div><div id="playingCourts" class="playing"></div></div>
 
 <div class="box"><h2>⏭️ NEXTMATCH</h2><div id="next"></div><div class="muted">ครบ 4 คนแล้ว กด “จัดคู่” เพื่อกำหนดฝั่ง</div></div>
 <div class="box"><h2>🚶 QUEUE</h2><div id="queue" class="queue"></div></div>
 
 <div class="box controls"><h2>ควบคุม</h2>
-<button class="dark" id="f1">สนาม 1 จบ</button><button class="dark" id="f2">สนาม 2 จบ</button>
+<div id="courtFinishButtons" class="court-finish-buttons"></div>
 <button id="s1">ส่งเข้า N1</button><button id="s2">ส่งเข้า N2</button><button id="s3">ส่งเข้า N3</button>
 <button class="gray" id="undo">↶ UNDO</button><button class="gray" id="clear">ล้างตัวเลือก</button><button class="gray" id="reset">เริ่มใหม่</button>
 <div id="status" class="status"></div></div>
@@ -175,6 +174,7 @@ const initial={
  games:{},hands:{},waitSince:{},waitSeq:0,
  pairs:{c1:blank(),c2:blank(),n1:blank(),n2:blank(),n3:blank()},
  courtNames:{c1:"สนาม 1",c2:"สนาม 2"},
+ courtCount:2,
  matchHistory:[]
 };
 let state=JSON.parse(JSON.stringify(initial)),qsel=new Set(),rsel=new Set(),undoStack=[];
@@ -200,13 +200,26 @@ function saveCourtNames(){
  try{localStorage.setItem("nextmatch_court_names",JSON.stringify(state.courtNames))}catch(e){}
 }
 function renderCourtNames(){
- ["c1","c2"].forEach((k,i)=>{
-  const name=state.courtNames&&state.courtNames[k] ? state.courtNames[k] : ("สนาม "+(i+1));
-  const title=document.getElementById("courtTitle"+(i+1));
-  if(title)title.textContent=name;
-  const btn=document.getElementById("f"+(i+1));
-  if(btn)btn.textContent=name+" จบ";
- });
+ const wrap=document.getElementById("playingCourts");
+ if(!wrap)return;
+ const count=Math.max(1,Math.min(8,state.courtCount||2));
+ wrap.innerHTML="";
+ const fb=document.getElementById("courtFinishButtons"); if(fb)fb.innerHTML="";
+ for(let c=1;c<=count;c++){
+   const k="c"+c;
+   if(!state[k]){state[k]=[];state.pairs[k]=blank()}
+   const name=state.courtNames&&state.courtNames[k]?state.courtNames[k]:"สนาม "+c;
+   state.courtNames[k]=name;
+   const card=document.createElement("div");card.className="court";
+   const title=document.createElement("div");title.className="court-title editable-court";title.title="คลิกเพื่อแก้ชื่อสนาม";title.textContent=name;title.onclick=()=>editCourtName(c);
+   const vs=document.createElement("div");vs.className="vs-wrap";
+   const a=document.createElement("div");a.className="side";a.id="c"+c+"a";
+   const mid=document.createElement("div");mid.className="vs";mid.textContent="VS";
+   const b=document.createElement("div");b.className="side";b.id="c"+c+"b";
+   vs.append(a,mid,b);card.append(title,vs);wrap.appendChild(card);
+   if(fb){const btn=document.createElement("button");btn.type="button";btn.className="dark";btn.textContent=name+" จบ";btn.onclick=()=>finish(c);fb.appendChild(btn)}
+ }
+ const label=document.getElementById("courtCountLabel");if(label)label.textContent=count+" สนาม";
 }
 function editCourtName(c){
  const k="c"+c;
@@ -237,8 +250,8 @@ function normalizePair(k){
 }
 function render(){
  renderCourtNames();
- ["c1","c2","n1","n2","n3"].forEach(normalizePair);
- renderSide("c1a",state.pairs.c1.a);renderSide("c1b",state.pairs.c1.b);renderSide("c2a",state.pairs.c2.a);renderSide("c2b",state.pairs.c2.b);
+ for(let c=1;c<=state.courtCount;c++){const k="c"+c;normalizePair(k);renderSide(k+"a",state.pairs[k].a);renderSide(k+"b",state.pairs[k].b)}
+ ["n1","n2","n3"].forEach(normalizePair);
  const next=document.getElementById("next");next.innerHTML="";
  [["N1","n1"],["N2","n2"],["N3","n3"]].forEach(([lab,k],i)=>{
   const row=document.createElement("div");row.className="nextrow";
@@ -268,15 +281,15 @@ function render(){
    head.innerHTML="<span>"+v+" เกม</span><span>"+byGames[v].length+" คน</span>";
    group.appendChild(head);
    byGames[v].sort((a,b)=>{
-     const aPlaying=state.c1.includes(a)||state.c2.includes(a);
-     const bPlaying=state.c1.includes(b)||state.c2.includes(b);
+     const aPlaying=Array.from({length:state.courtCount},(_,i)=>"c"+(i+1)).some(k=>state[k]&&state[k].includes(a));
+     const bPlaying=Array.from({length:state.courtCount},(_,i)=>"c"+(i+1)).some(k=>state[k]&&state[k].includes(b));
      if(aPlaying!==bPlaying)return aPlaying?1:-1;
      return (state.waitSince[b]??0)-(state.waitSince[a]??0);
    }).forEach(n=>{
      const item=document.createElement("div");item.className="stat";
      item.appendChild(handDot(n));
      const nt=document.createElement("span"); nt.textContent=n; item.appendChild(nt);
-     const playing = state.c1.includes(n) || state.c2.includes(n);
+     const playing = Array.from({length:state.courtCount},(_,i)=>"c"+(i+1)).some(k=>state[k]&&state[k].includes(n));
      if(playing){
        const status=document.createElement("span");
        status.className="summary-playing";
@@ -339,7 +352,7 @@ function addRosterQueue(){
 function compact(){if(!state.g1.length){state.g1=state.g2;state.g2=state.g3;state.g3=[]}else if(!state.g2.length){state.g2=state.g3;state.g3=[]}}
 function autoStart(){
  let started=[];
- for(const c of [1,2]){
+ for(let c=1;c<=state.courtCount;c++){
    if(!state["c"+c].length&&state.n1.length===4){
      state["c"+c]=state.n1.slice();
      state.pairs["c"+c]=clone(state.pairs.n1);
@@ -399,14 +412,15 @@ document.getElementById("pairConfirm").addEventListener("click",function(){
  msg("จัดคู่ "+tempA.join(" + ")+" VS "+tempB.join(" + ")+" แล้ว");
 });
 loadCourtNames();
-document.getElementById("courtTitle1").onclick=()=>editCourtName(1);
-document.getElementById("courtTitle2").onclick=()=>editCourtName(2);
-document.getElementById("f1").onclick=()=>finish(1);document.getElementById("f2").onclick=()=>finish(2);document.getElementById("s1").onclick=()=>send("n1");document.getElementById("s2").onclick=()=>send("n2");document.getElementById("s3").onclick=()=>send("n3");
+document.getElementById("s1").onclick=()=>send("n1");document.getElementById("s2").onclick=()=>send("n2");document.getElementById("s3").onclick=()=>send("n3");
+
+document.getElementById("addCourt").onclick=()=>{if(state.courtCount>=8)return msg("⚠️ เพิ่มได้สูงสุด 8 สนาม");const before=clone(state);state.courtCount++;const k="c"+state.courtCount;state[k]=[];state.pairs[k]=blank();state.courtNames[k]="สนาม "+state.courtCount;undoStack.push(before);render();msg("เพิ่มสนามแล้ว")};
+document.getElementById("removeCourt").onclick=()=>{if(state.courtCount<=1)return msg("⚠️ ต้องมีอย่างน้อย 1 สนาม");const k="c"+state.courtCount;if(state[k]&&state[k].length)return msg("⚠️ สนามนี้ยังมีผู้เล่นอยู่");const before=clone(state);delete state[k];delete state.pairs[k];delete state.courtNames[k];state.courtCount--;undoStack.push(before);render();msg("ลดสนามแล้ว")};
 document.getElementById("undo").onclick=()=>{if(!undoStack.length)return msg("ไม่มีอะไรให้ Undo");state=undoStack.pop();qsel.clear();rsel.clear();render();msg("↶ ย้อนกลับแล้ว")};
 document.getElementById("clear").onclick=()=>{qsel.clear();rsel.clear();render();msg("ล้างตัวเลือกแล้ว")};
 document.getElementById("reset").onclick=()=>{
  state=JSON.parse(JSON.stringify(initial));
- state.courtNames={c1:"สนาม 1",c2:"สนาม 2"};
+ state.courtNames={c1:"สนาม 1",c2:"สนาม 2"};state.courtCount=2;
  try{localStorage.removeItem("nextmatch_court_names")}catch(e){}
  undoStack=[];qsel.clear();rsel.clear();render();msg("เริ่มใหม่แล้ว")
 };
