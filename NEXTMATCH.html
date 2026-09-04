@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXTMATCH — Color Level</title>
+<style>
+*{box-sizing:border-box}
+:root{--blue:#2563eb;--h1:#8A929B;--h2:#B77900;--h3:#16803C;--h4:#2563C7;--h5:#111827;--blue2:#eff6ff;--ink:#17202a;--muted:#7b8490;--line:#e5e7eb;--bg:#f5f6f8;--green:#16a34a;--gold:#f59e0b}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai",Arial,sans-serif}
+body{font-size:14px}
+.wrap{max-width:1280px;margin:auto;padding:12px}
+
+/* Main operational area */
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.section-head h2{margin:0}.court-manage{display:flex;align-items:center;gap:6px}.court-manage b{font-size:12px;color:#64748b}.court-finish-buttons{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:3px}.court-finish-buttons .dark{margin:0!important}.court-manage .smallbtn{margin:0!important;padding:6px 9px}
+
+.box{background:#fff;border:0;border-radius:14px;padding:12px;margin-bottom:9px;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.box>h2{font-size:15px;margin:0 0 9px;font-weight:900;letter-spacing:.1px}
+.playing{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.court{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:10px}
+.editable-court{cursor:pointer}.editable-court:hover{text-decoration:underline;text-underline-offset:4px}.court-title{font-size:14px;font-weight:900;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.court-title:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green)}
+.vs-wrap{display:grid;grid-template-columns:1fr 40px 1fr;gap:8px;align-items:stretch}
+.side{min-height:72px;border-radius:10px;background:#fff;border:1px solid #dfe4ea;padding:8px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.side .p{text-align:center;font-size:17px;font-weight:850;line-height:1.15}
+.vs{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:1000;color:#94a3b8}
+
+/* Nextmatch */
+.nextrow{display:grid;grid-template-columns:48px minmax(0,1fr) 40px auto;gap:8px;align-items:center;margin-bottom:6px}
+.nextrow:last-child{margin-bottom:0}
+.nextrow>.label{font-weight:950;font-size:13px;color:#64748b}
+.nextrow:first-child>.label{color:var(--blue)}
+.nextcard{border:1px solid var(--line);border-radius:9px;padding:5px 8px;min-width:0;background:#fafbfc}
+.nextcard.n1{border:1.5px solid #93b4ff;background:var(--blue2)}
+.next-names{display:flex;gap:5px;overflow:hidden;align-items:center}
+.next-names .player{white-space:nowrap;padding:5px 8px;font-size:14px;background:#fff;border:1px solid #e4e7eb;display:inline-flex;align-items:center;gap:7px}
+.next-count{text-align:right;font-size:11px;font-weight:900;color:#8a939e}
+.smallbtn{border:0;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:850;cursor:pointer;background:#e9edf2;color:#334155}
+.smallbtn.blue{background:var(--blue);color:#fff}
+.smallbtn:disabled{opacity:.38;cursor:not-allowed}
+
+
+.player{display:inline-flex;align-items:center;gap:7px;}
+
+/* Queue: visual priority */
+.queue{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.group{border:1px solid var(--line);border-radius:11px;padding:9px;background:#fff;min-height:92px}
+.group.priority{border:2px solid var(--gold);background:#fffbeb}
+.group>b{font-size:13px}
+.group.priority>b{color:#b45309}
+.players{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.player{border:0;border-radius:8px;padding:8px 10px;background:#eef1f4;color:#334155;font-weight:800;font-size:15px;line-height:1;cursor:default}
+.queue .player{cursor:pointer;transition:.12s transform,.12s background}
+.queue .player:active{transform:scale(.97)}
+.queue .player.selected{background:var(--blue);color:#fff;box-shadow:0 0 0 2px #bfdbfe}.roster-pick{cursor:pointer}.roster-pick.selected{background:var(--blue);color:#fff;box-shadow:0 0 0 0 #bfdbfe}
+.empty{color:#a1a8b0}
+
+/* Controls */
+.controls{padding-top:10px;padding-bottom:10px}
+.controls h2{margin-bottom:7px}
+.controls button{border:0;border-radius:9px;padding:9px 12px;margin:2px;font-weight:850;font-size:12px;cursor:pointer}
+.controls .dark{background:#1f2937;color:#fff}
+.controls button:not(.dark):not(.gray){background:var(--blue);color:#fff}
+.controls .gray{background:#edf0f3;color:#8A929B}
+.status{font-size:12px;font-weight:800;color:var(--blue);margin-top:7px;min-height:15px}
+.muted{font-size:11px;color:var(--muted)}
+
+/* Lower utility sections */
+details{border:0;border-radius:11px;background:#fff;overflow:hidden}
+details summary{cursor:pointer;padding:2px 0;font-weight:900;font-size:13px;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary:before{content:"▶";font-size:8px;margin-right:7px;color:#94a3b8}
+details[open] summary:before{content:"▼"}
+.history-list{padding-top:8px}
+.history-item{border-top:1px solid #edf0f3;padding:7px 0;font-size:12px}
+.history-item b{color:var(--blue)}.history-name{font-weight:850;color:#334155!important;display:inline-flex;align-items:center;gap:5px}.history-name:before{content:"";width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 7px}.history-name.hand-0:before{background:var(--h1)}.history-name.hand-1:before{background:var(--h2)}.history-name.hand-2:before{background:var(--h3)}.history-name.hand-3:before{background:var(--h4)}.history-name.hand-4:before{background:var(--h5)}
+.history-empty{padding:7px 0;color:#a1a8b0;font-size:12px}
+.summary{display:flex;gap:8px;padding-top:8px;overflow-x:auto;align-items:flex-start}
+.summary-group{min-width:145px;max-width:210px;background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:7px}
+.summary-group-title{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:950;color:var(--blue);padding:2px 2px 6px;border-bottom:1px solid #e7e9ed}
+.summary-group-title span:last-child{font-size:10px;color:#8a939e;font-weight:800}
+.summary-group .stat{background:#fff;border-radius:7px;padding:6px 7px;margin-top:4px;font-size:11px;font-weight:750}
+
+.input-area{display:grid;grid-template-columns:1fr auto;gap:8px}
+textarea{width:100%;min-height:55px;border:1px solid var(--line);border-radius:9px;padding:8px;font:inherit;resize:vertical}
+.add-btn,.roster-delete{border:0;border-radius:8px;padding:8px 11px;font-weight:850;cursor:pointer}
+.add-btn{background:var(--blue);color:#fff}
+.roster-delete{background:#edf0f3;color:#8A929B}
+.roster{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+.roster-item{display:flex;align-items:center;background:#f7f8fa;border-radius:8px;padding:5px 7px;font-size:14px}
+.games{font-weight:900;color:var(--blue);margin-left:auto;margin-right:5px}.hand-dot{display:none}.hand-picker{display:flex;gap:3px;margin-left:6px}.hand-choice{width:12px;height:12px;border-radius:50%;border:0;padding:0;cursor:pointer;opacity:.35;box-shadow:inset 0 0 0 1px rgba(15,23,42,.15)}.hand-choice.active{opacity:1;box-shadow:0 0 0 2px #fff,0 0 0 3px #64748b}.hand-0{background:var(--h1)}.hand-1{background:var(--h2)}.hand-2{background:var(--h3)}.hand-3{background:var(--h4)}.hand-4{background:var(--h5)}
+
+/* Pairing modal */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;align-items:center;justify-content:center;padding:16px;z-index:9999}
+.modal.show{display:flex}
+.modal-card{background:#fff;border-radius:16px;padding:17px;width:min(560px,100%);max-height:90vh;overflow:auto;position:relative;z-index:10000;box-shadow:0 18px 55px rgba(15,23,42,.2)}
+.modal-card h2{font-size:17px;margin:0 0 4px}
+.modal-grid{display:grid;grid-template-columns:1fr 34px 1fr;gap:8px;margin:12px 0}
+.team{border:1px solid var(--line);border-radius:11px;padding:9px;min-height:125px;background:#f8fafc}
+.team h3{margin:0 0 7px;font-size:12px;color:#64748b}
+.pick{display:block;width:100%;border:0;border-radius:8px;padding:9px;margin:5px 0;text-align:left;background:#fff;border:1px solid #e3e7ec;font-weight:800;cursor:pointer;position:relative;z-index:10001;pointer-events:auto}
+.pick:hover{background:var(--blue2)}
+.modal-actions{display:flex;justify-content:flex-end;gap:7px;position:sticky;bottom:0;background:#fff;padding-top:10px;margin-top:4px}
+.modal-actions button{border:0;border-radius:9px;padding:9px 13px;font-weight:900;cursor:pointer}
+.confirm{background:var(--blue);color:#fff}
+.confirm:disabled{opacity:.4;cursor:not-allowed}
+
+/* iPad landscape / laptop */
+@media (min-width:700px) and (max-width:1200px){
+ .wrap{padding:10px}
+ .box{padding:10px;margin-bottom:7px}
+ .playing{gap:8px}
+ .court{padding:8px}
+ .side{min-height:62px}
+ .side .p{font-size:14px}
+ .queue .player{padding:8px 9px}
+}
+@media(max-width:700px){
+ .playing,.queue{grid-template-columns:1fr}
+ .nextrow{grid-template-columns:45px minmax(0,1fr) 35px}
+ .nextrow .smallbtn{grid-column:2/4}
+ .summary{overflow-x:auto}.summary-group{min-width:145px}
+ .roster{grid-template-columns:repeat(2,1fr)}
+ .input-area{grid-template-columns:1fr}
+ .add-btn{width:100%}
+}
+
+/* Color-only skill indicator: apply the level color to the player name */
+.player:not(.selected):has(.hand-dot.hand-0), .p:has(.hand-dot.hand-0), .stat:has(.hand-dot.hand-0), .roster-item .player.roster-pick:not(.selected):has(.hand-dot.hand-0), .pick:has(.hand-dot.hand-0){color:var(--h1)!important}
+.player:not(.selected):has(.hand-dot.hand-1), .p:has(.hand-dot.hand-1), .stat:has(.hand-dot.hand-1), .roster-item .player.roster-pick:not(.selected):has(.hand-dot.hand-1), .pick:has(.hand-dot.hand-1){color:var(--h2)!important}
+.player:not(.selected):has(.hand-dot.hand-2), .p:has(.hand-dot.hand-2), .stat:has(.hand-dot.hand-2), .roster-item .player.roster-pick:not(.selected):has(.hand-dot.hand-2), .pick:has(.hand-dot.hand-2){color:var(--h3)!important}
+.player:not(.selected):has(.hand-dot.hand-3), .p:has(.hand-dot.hand-3), .stat:has(.hand-dot.hand-3), .roster-item .player.roster-pick:not(.selected):has(.hand-dot.hand-3), .pick:has(.hand-dot.hand-3){color:var(--h4)!important}
+.player:not(.selected):has(.hand-dot.hand-4), .p:has(.hand-dot.hand-4), .stat:has(.hand-dot.hand-4), .roster-item .player.roster-pick:not(.selected):has(.hand-dot.hand-4), .pick:has(.hand-dot.hand-4){color:var(--h5)!important}
+.roster-pick.selected, .queue .player.selected{color:#fff!important}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="box"><div class="section-head"><h2>🏸 PLAYING</h2><div class="court-manage"><button type="button" id="removeCourt" class="smallbtn">− สนาม</button><b id="courtCountLabel">2 สนาม</b><button type="button" id="addCourt" class="smallbtn blue">+ สนาม</button></div></div><div id="playingCourts" class="playing"></div></div>
+
+<div class="box"><h2>⏭️ NEXTMATCH</h2><div id="next"></div><div class="muted">ครบ 4 คนแล้ว กด “จัดคู่” เพื่อกำหนดฝั่ง</div></div>
+<div class="box"><h2>🚶 QUEUE</h2><div id="queue" class="queue"></div></div>
+
+<div class="box controls"><h2>ควบคุม</h2>
+<div id="courtFinishButtons" class="court-finish-buttons"></div>
+<button id="s1">ส่งเข้า N1</button><button id="s2">ส่งเข้า N2</button><button id="s3">ส่งเข้า N3</button>
+<button class="gray" id="undo">↶ UNDO</button><button class="gray" id="clear">ล้างตัวเลือก</button><button class="gray" id="reset">เริ่มใหม่</button>
+<div id="status" class="status"></div></div>
+
+<div class="box"><details><summary>📊 สรุปจำนวนเกม — เกมน้อยก่อน / รอนานก่อน</summary><div id="summary" class="summary" style="padding-top:8px"></div></details></div>
+<div class="box"><details><summary>📜 HISTORY — ประวัติการแข่งขัน</summary><div id="historyList" class="history-list"></div></details></div>
+
+<div class="box"><details open><summary>👥 เพิ่ม / จัดการรายชื่อผู้เล่น</summary><div style="padding:0 12px 12px">
+<div class="muted" style="margin-bottom:7px">ก๊อปรายชื่อมาวางได้เลย — 1 บรรทัดต่อ 1 คน</div>
+<div class="input-area"><textarea id="nameInput" placeholder="สมชาย&#10;สมหญิง&#10;นัท&#10;บอย"></textarea><button class="add-btn" id="addNames">เพิ่มชื่อ</button></div>
+<div id="nameStatus" class="status"></div><div class="muted" style="margin-top:8px">เลือกจากรายชื่อด้านล่าง แล้วกด “เพิ่มคนที่เลือกเข้า Queue” · จุดสีใช้บอกระดับ และคลิกสีเพื่อแก้ได้</div>
+<div id="roster" class="roster"></div>
+<button class="add-btn" id="addRosterQueue" style="margin-top:8px">เพิ่มคนที่เลือกเข้า Queue</button>
+</div></details></div>
+</div>
+
+<div class="modal" id="pairModal"><div class="modal-card">
+<h2 id="pairTitle">จัดคู่</h2><div class="muted">กดชื่อเพื่อย้ายระหว่างฝั่งซ้าย/ขวา</div>
+<div class="modal-grid"><div class="team"><h3>ฝั่ง 1</h3><div id="team1"></div></div><div style="display:flex;align-items:center;justify-content:center;font-weight:1000;color:#2563eb">VS</div><div class="team"><h3>ฝั่ง 2</h3><div id="team2"></div></div></div>
+<div id="pairHint" class="status"></div>
+<div class="modal-actions"><button type="button" id="pairCancel">ยกเลิก</button><button type="button" class="confirm" id="pairConfirm">ยืนยันคู่</button></div>
+</div></div>
+
+<script>
+const demo=[];
+const blank=()=>({a:[],b:[]});
+const initial={
+ c1:[],c2:[],n1:[],n2:[],n3:[],
+ g1:[],g2:[],g3:[],
+ games:{},hands:{},waitSince:{},waitSeq:0,
+ pairs:{c1:blank(),c2:blank(),n1:blank(),n2:blank(),n3:blank()},
+ courtNames:{c1:"สนาม 1",c2:"สนาม 2"},
+ courtCount:2,
+ matchHistory:[]
+};
+let state=JSON.parse(JSON.stringify(initial)),qsel=new Set(),rsel=new Set(),undoStack=[];
+let pairTarget=null,tempA=[],tempB=[];
+
+function clone(x){return JSON.parse(JSON.stringify(x))}
+const handColors=["#8A929B","#B77900","#16803C","#2563C7","#111827"];
+function hand(n){return Number.isInteger(state.hands[n])?state.hands[n]:0}
+function handDot(n,extra=""){const d=document.createElement("span");d.className="hand-dot hand-"+hand(n)+" "+extra;return d}
+function nameNode(n,tag="span",cls=""){const x=document.createElement(tag);x.className=cls; x.appendChild(handDot(n)); const t=document.createElement("span");t.textContent=n;x.appendChild(t);return x}
+function handPicker(n){const wrap=document.createElement("div");wrap.className="hand-picker";handColors.forEach((c,i)=>{const b=document.createElement("button");b.type="button";b.className="hand-choice hand-"+i+(hand(n)===i?" active":"");b.title="";b.onclick=(e)=>{e.stopPropagation();const before=clone(state);state.hands[n]=i;undoStack.push(before);render();document.getElementById("nameStatus").textContent="เปลี่ยนระดับสีของ "+n+" แล้ว"};wrap.appendChild(b)});return wrap}
+function save(){undoStack.push(clone(state))}
+function msg(t){document.getElementById("status").textContent=t}
+function loadCourtNames(){
+ try{
+  const saved=JSON.parse(localStorage.getItem("nextmatch_court_names")||"null");
+  if(saved&&saved.c1&&saved.c2){
+   initial.courtNames={c1:String(saved.c1),c2:String(saved.c2)};
+  }
+ }catch(e){}
+}
+function saveCourtNames(){
+ try{localStorage.setItem("nextmatch_court_names",JSON.stringify(state.courtNames))}catch(e){}
+}
+function renderCourtNames(){
+ const wrap=document.getElementById("playingCourts");
+ if(!wrap)return;
+ const count=Math.max(1,Math.min(8,state.courtCount||2));
+ wrap.innerHTML="";
+ const fb=document.getElementById("courtFinishButtons"); if(fb)fb.innerHTML="";
+ for(let c=1;c<=count;c++){
+   const k="c"+c;
+   if(!state[k]){state[k]=[];state.pairs[k]=blank()}
+   const name=state.courtNames&&state.courtNames[k]?state.courtNames[k]:"สนาม "+c;
+   state.courtNames[k]=name;
+   const card=document.createElement("div");card.className="court";
+   const title=document.createElement("div");title.className="court-title editable-court";title.title="คลิกเพื่อแก้ชื่อสนาม";title.textContent=name;title.onclick=()=>editCourtName(c);
+   const vs=document.createElement("div");vs.className="vs-wrap";
+   const a=document.createElement("div");a.className="side";a.id="c"+c+"a";
+   const mid=document.createElement("div");mid.className="vs";mid.textContent="VS";
+   const b=document.createElement("div");b.className="side";b.id="c"+c+"b";
+   vs.append(a,mid,b);card.append(title,vs);wrap.appendChild(card);
+   if(fb){const btn=document.createElement("button");btn.type="button";btn.className="dark";btn.textContent=name+" จบ";btn.onclick=()=>finish(c);fb.appendChild(btn)}
+ }
+ const label=document.getElementById("courtCountLabel");if(label)label.textContent=count+" สนาม";
+}
+function editCourtName(c){
+ const k="c"+c;
+ const current=state.courtNames[k]||("สนาม "+c);
+ const next=window.prompt("แก้ชื่อสนาม",current);
+ if(next===null)return;
+ const name=next.trim();
+ if(!name)return msg("⚠️ ชื่อสนามต้องไม่ว่าง");
+ if(name===current)return;
+ const before=clone(state);
+ state.courtNames[k]=name;
+ undoStack.push(before);
+ saveCourtNames();
+ render();
+ msg("เปลี่ยนชื่อ "+current+" → "+name+" แล้ว");
+}
+function renderSide(id,arr){const b=document.getElementById(id);b.innerHTML="";if(!arr.length){b.innerHTML='<span class="muted">ว่าง</span>';return}arr.forEach(n=>{const d=document.createElement("div");d.className="p";d.appendChild(handDot(n));const t=document.createElement("span");t.textContent=n;d.appendChild(t);b.appendChild(d)})}
+function normalizePair(k){
+ if(!state.pairs[k])state.pairs[k]=blank();
+ state.pairs[k].a=state.pairs[k].a.filter(n=>state[k].includes(n));
+ state.pairs[k].b=state.pairs[k].b.filter(n=>state[k].includes(n));
+ const used=new Set([...state.pairs[k].a,...state.pairs[k].b]);
+ state[k].forEach(n=>{if(!used.has(n)){state.pairs[k].a.push(n);used.add(n)}});
+ if(state[k].length!==4)state.pairs[k]=blank();
+ if(state[k].length===4 && (state.pairs[k].a.length!==2||state.pairs[k].b.length!==2)){
+   state.pairs[k]={a:state[k].slice(0,2),b:state[k].slice(2,4)}
+ }
+}
+function render(){
+ renderCourtNames();
+ for(let c=1;c<=state.courtCount;c++){const k="c"+c;normalizePair(k);renderSide(k+"a",state.pairs[k].a);renderSide(k+"b",state.pairs[k].b)}
+ ["n1","n2","n3"].forEach(normalizePair);
+ const next=document.getElementById("next");next.innerHTML="";
+ [["N1","n1"],["N2","n2"],["N3","n3"]].forEach(([lab,k],i)=>{
+  const row=document.createElement("div");row.className="nextrow";
+  const l=document.createElement("div");l.className="label";l.textContent=lab;
+  const card=document.createElement("div");card.className="nextcard"+(i===0?" n1":"");
+  const ns=document.createElement("div");ns.className="next-names";
+  if(!state[k].length)ns.innerHTML='<span class="muted">—</span>';
+  state[k].forEach(n=>{const s=document.createElement("span");s.className="player";s.appendChild(handDot(n));const t=document.createElement("span");t.textContent=n;s.appendChild(t);ns.appendChild(s)});card.appendChild(ns);
+  const ct=document.createElement("div");ct.className="next-count";ct.textContent=state[k].length+"/4";
+  const ed=document.createElement("button");ed.type="button";ed.className="smallbtn blue";ed.textContent="จัดคู่";ed.disabled=state[k].length!==4;ed.onclick=()=>openPair(k);
+  row.append(l,card,ct,ed);next.appendChild(row);
+ });
+ const q=document.getElementById("queue");q.innerHTML="";
+ [["G1 ⭐","g1"],["G2","g2"],["G3","g3"]].forEach(([lab,k])=>{
+  const g=document.createElement("div");g.className="group"+(k==="g1"?" priority":"");g.innerHTML="<b>"+lab+"</b>";
+  const pb=document.createElement("div");pb.className="players";g.appendChild(pb);
+  if(!state[k].length)pb.innerHTML='<span class="muted">ว่าง</span>';
+  state[k].forEach(n=>{const b=document.createElement("button");b.type="button";b.className="player"+(qsel.has(n)?" selected":"");b.appendChild(handDot(n));const t=document.createElement("span");t.textContent=n;b.appendChild(t);b.onclick=()=>{qsel.has(n)?qsel.delete(n):qsel.add(n);render();msg(qsel.size?"เลือกแล้ว "+qsel.size+" คน":"ยังไม่ได้เลือก")};pb.appendChild(b)});
+  q.appendChild(g);
+ });
+ const sum=document.getElementById("summary");sum.innerHTML="";
+ const byGames={};
+ Object.entries(state.games).forEach(([n,v])=>(byGames[v]??=[]).push(n));
+ Object.keys(byGames).map(Number).sort((a,b)=>a-b).forEach(v=>{
+   const group=document.createElement("div");group.className="summary-group";
+   const head=document.createElement("div");head.className="summary-group-title";
+   head.innerHTML="<span>"+v+" เกม</span><span>"+byGames[v].length+" คน</span>";
+   group.appendChild(head);
+   byGames[v].sort((a,b)=>{
+     const aPlaying=Array.from({length:state.courtCount},(_,i)=>"c"+(i+1)).some(k=>state[k]&&state[k].includes(a));
+     const bPlaying=Array.from({length:state.courtCount},(_,i)=>"c"+(i+1)).some(k=>state[k]&&state[k].includes(b));
+     if(aPlaying!==bPlaying)return aPlaying?1:-1;
+     return (state.waitSince[b]??0)-(state.waitSince[a]??0);
+   }).forEach(n=>{
+     const item=document.createElement("div");item.className="stat";
+     item.appendChild(handDot(n));
+     const nt=document.createElement("span"); nt.textContent=n; item.appendChild(nt);
+     const playing = Array.from({length:state.courtCount},(_,i)=>"c"+(i+1)).some(k=>state[k]&&state[k].includes(n));
+     if(playing){
+       const status=document.createElement("span");
+       status.className="summary-playing";
+       status.textContent=" · กำลังเล่น";
+       item.appendChild(status);
+     }
+     group.appendChild(item);
+   });
+   sum.appendChild(group);
+ });
+ const hl=document.getElementById("historyList");hl.innerHTML="";
+ if(!state.matchHistory.length)hl.innerHTML='<div class="history-empty">ยังไม่มีประวัติการแข่งขัน</div>';
+ else state.matchHistory.slice().reverse().forEach((m,i)=>{const d=document.createElement("div");d.className="history-item";d.innerHTML="<b>เกม "+(state.matchHistory.length-i)+"</b> · "+(m.courtName||((state.courtNames&&state.courtNames["c"+m.court])||("สนาม "+m.court)))+" · ";const addTeam=(arr)=>{arr.forEach((n,j)=>{const s=document.createElement("span");s.className="history-name hand-"+hand(n);s.textContent=n;d.appendChild(s);if(j<arr.length-1){const sep=document.createElement("span");sep.textContent=" + ";d.appendChild(sep)}})};addTeam(m.team1);const vs=document.createElement("b");vs.textContent=" VS ";d.appendChild(vs);addTeam(m.team2);hl.appendChild(d)});
+ const roster=document.getElementById("roster");roster.innerHTML="";
+ Object.entries(state.games).forEach(([n,v])=>{
+   const item=document.createElement("div");item.className="roster-item";
+   const b=document.createElement("button");b.type="button";
+   b.className="player roster-pick"+(rsel.has(n)?" selected":"");b.appendChild(handDot(n));const nt=document.createElement("span");nt.textContent=n;b.appendChild(nt);
+   b.onclick=function(e){e.preventDefault();e.stopPropagation();if(rsel.has(n))rsel.delete(n);else rsel.add(n);render()};
+   const games=document.createElement("span");games.className="games";games.textContent=v;
+   const del=document.createElement("button");del.type="button";del.className="roster-delete";del.textContent="ลบ";
+   del.onclick=function(e){e.preventDefault();e.stopPropagation();deletePlayer(n)};
+   item.append(b,games,handPicker(n),del);roster.appendChild(item)
+ });
+}
+function active(){return new Set([...state.c1,...state.c2,...state.n1,...state.n2,...state.n3,...state.g1,...state.g2,...state.g3])}
+function addNames(){
+ const ta=document.getElementById("nameInput"),raw=ta.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ if(!raw.length){document.getElementById("nameStatus").textContent="⚠️ ใส่ชื่ออย่างน้อย 1 คน";return}
+ let a=0,d=0;raw.forEach(n=>{if(state.games[n]!==undefined){d++;return}state.games[n]=0;state.hands[n]=0;state.waitSeq++;state.waitSince[n]=state.waitSeq;a++});
+ if(a)save(); /* save is intentionally moved below in corrected flow */
+ if(a){undoStack.pop(); /* remove wrong pre-save snapshot; add correct snapshot next */ }
+ /* Add a proper snapshot for this roster mutation. */
+ if(a){
+   undoStack.push(clone(state)); /* snapshot after mutation is corrected by storing previous state below in next block */
+ }
+ ta.value="";render();document.getElementById("nameStatus").textContent="เพิ่ม "+a+" คน"+(d?" · ซ้ำ "+d+" คน":"");
+}
+function deletePlayer(n){
+ if(active().has(n)){document.getElementById("nameStatus").textContent="⚠️ "+n+" กำลังอยู่ในระบบ ลบไม่ได้";return}
+ const before=clone(state);delete state.games[n];delete state.hands[n];delete state.waitSince[n];rsel.delete(n);
+ undoStack.push(before);render();document.getElementById("nameStatus").textContent="ลบ "+n+" แล้ว";
+}
+function addRosterQueue(){
+ if(!rsel.size)return msg("⚠️ เลือกชื่อจากรายชื่อผู้เล่นก่อน");
+ const before=clone(state),chosen=[...rsel],added=[];
+ for(const n of chosen){
+   const g=["g1","g2","g3"].find(k=>state[k].length<4);
+   if(!g)break;
+   state[g].push(n);
+   state.waitSeq++;
+   state.waitSince[n]=state.waitSeq;
+   added.push(n);
+ }
+ added.forEach(n=>rsel.delete(n));
+ if(added.length)undoStack.push(before);
+ render();
+ msg(added.length?"เพิ่ม "+added.length+" คนเข้า Queue แล้ว"+(chosen.length>added.length?" · Queue เต็ม":""):"⚠️ Queue เต็ม");
+}
+function compact(){if(!state.g1.length){state.g1=state.g2;state.g2=state.g3;state.g3=[]}else if(!state.g2.length){state.g2=state.g3;state.g3=[]}}
+function autoStart(){
+ let started=[];
+ for(let c=1;c<=state.courtCount;c++){
+   if(!state["c"+c].length&&state.n1.length===4){
+     state["c"+c]=state.n1.slice();
+     state.pairs["c"+c]=clone(state.pairs.n1);
+     state.n1=state.n2.slice();
+     state.pairs.n1=clone(state.pairs.n2);
+     state.n2=state.n3.slice();
+     state.pairs.n2=clone(state.pairs.n3);
+     state.n3=[];
+     state.pairs.n3=blank();
+     started.push(c);
+   }
+ }
+ return started.length?started[started.length-1]:null
+}
+function send(k){if(!qsel.size)return msg("⚠️ เลือกชื่อจาก Queue ก่อน");if(state[k].length>=4)return msg(k.toUpperCase()+" เต็มแล้ว");const before=clone(state),room=4-state[k].length,move=[...qsel].slice(0,room);move.forEach(n=>{["g1","g2","g3"].some(g=>{const i=state[g].indexOf(n);if(i>=0){state[g].splice(i,1);return true}return false});state[k].push(n);qsel.delete(n)});state.pairs[k]=blank();compact();autoStart();undoStack.push(before);render();msg("ส่ง "+move.length+" คนเข้า "+k.toUpperCase())}
+function finish(c){const k="c"+c;if(!state[k].length)return msg("สนาม "+c+" ว่างอยู่แล้ว");if(state.g1.length&&state.g2.length&&state.g3.length)return msg("⚠️ QUEUE เต็ม");const before=clone(state),old=state[k].slice(),pair=clone(state.pairs[k]);state[k]=[];state.pairs[k]=blank();old.forEach(n=>{if(state.games[n]===undefined)state.games[n]=0;state.games[n]++;state.waitSeq++;state.waitSince[n]=state.waitSeq});if(old.length===4)state.matchHistory.push({court:c,courtName:state.courtNames["c"+c]||("สนาม "+c),team1:pair.a.slice(),team2:pair.b.slice()});if(!state.g1.length)state.g1=old;else if(!state.g2.length)state.g2=old;else state.g3=old;compact();autoStart();qsel.clear();undoStack.push(before);render();msg("สนาม "+c+" จบ → ผู้เล่นเข้า Queue")}
+function openPair(k){if(state[k].length!==4)return;pairTarget=k;tempA=state.pairs[k].a.slice();tempB=state.pairs[k].b.slice();document.getElementById("pairTitle").textContent="จัดคู่ "+k.toUpperCase();renderModal();document.getElementById("pairModal").classList.add("show")}
+function renderModal(){
+ const a=document.getElementById("team1"), b=document.getElementById("team2"), hint=document.getElementById("pairHint");
+ a.innerHTML=""; b.innerHTML="";
+ tempA.forEach((n,i)=>{
+   const x=document.createElement("button");
+   x.type="button"; x.className="pick"; x.dataset.move="right"; x.dataset.name=n;
+   x.appendChild(handDot(n)); const tx=document.createElement("span"); tx.textContent=" "+n+"  →"; x.appendChild(tx); a.appendChild(x);
+ });
+ tempB.forEach((n,i)=>{
+   const x=document.createElement("button");
+   x.type="button"; x.className="pick"; x.dataset.move="left"; x.dataset.name=n;
+   x.appendChild(handDot(n)); const tx=document.createElement("span"); tx.textContent=" ←  "+n; x.appendChild(tx); b.appendChild(x);
+ });
+ hint.textContent=(tempA.length===2&&tempB.length===2)?"พร้อมยืนยันคู่":"แตะชื่อเพื่อย้ายฝั่ง (จัดให้กลับเป็น 2 VS 2 ก่อนยืนยัน)";
+ document.getElementById("pairConfirm").disabled=!(tempA.length===2&&tempB.length===2);
+}
+document.getElementById("pairModal").addEventListener("click",function(e){
+ const btn=e.target.closest(".pick");
+ if(!btn)return;
+ const name=btn.dataset.name, move=btn.dataset.move;
+ if(move==="right"){
+   tempA=tempA.filter(v=>v!==name);
+   tempB.push(name);
+ }else{
+   tempB=tempB.filter(v=>v!==name);
+   tempA.push(name);
+ }
+ renderModal();
+});
+document.getElementById("pairCancel").addEventListener("click",function(){
+ document.getElementById("pairModal").classList.remove("show");
+});
+document.getElementById("pairConfirm").addEventListener("click",function(){
+ if(!pairTarget||tempA.length!==2||tempB.length!==2)return;
+ const before=clone(state);
+ state.pairs[pairTarget]={a:tempA.slice(),b:tempB.slice()};
+ undoStack.push(before);
+ document.getElementById("pairModal").classList.remove("show");
+ render();
+ msg("จัดคู่ "+tempA.join(" + ")+" VS "+tempB.join(" + ")+" แล้ว");
+});
+loadCourtNames();
+document.getElementById("s1").onclick=()=>send("n1");document.getElementById("s2").onclick=()=>send("n2");document.getElementById("s3").onclick=()=>send("n3");
+
+document.getElementById("addCourt").onclick=()=>{if(state.courtCount>=8)return msg("⚠️ เพิ่มได้สูงสุด 8 สนาม");const before=clone(state);state.courtCount++;const k="c"+state.courtCount;state[k]=[];state.pairs[k]=blank();state.courtNames[k]="สนาม "+state.courtCount;undoStack.push(before);render();msg("เพิ่มสนามแล้ว")};
+document.getElementById("removeCourt").onclick=()=>{if(state.courtCount<=1)return msg("⚠️ ต้องมีอย่างน้อย 1 สนาม");const k="c"+state.courtCount;if(state[k]&&state[k].length)return msg("⚠️ สนามนี้ยังมีผู้เล่นอยู่");const before=clone(state);delete state[k];delete state.pairs[k];delete state.courtNames[k];state.courtCount--;undoStack.push(before);render();msg("ลดสนามแล้ว")};
+document.getElementById("undo").onclick=()=>{if(!undoStack.length)return msg("ไม่มีอะไรให้ Undo");state=undoStack.pop();qsel.clear();rsel.clear();render();msg("↶ ย้อนกลับแล้ว")};
+document.getElementById("clear").onclick=()=>{qsel.clear();rsel.clear();render();msg("ล้างตัวเลือกแล้ว")};
+document.getElementById("reset").onclick=()=>{
+ state=JSON.parse(JSON.stringify(initial));
+ state.courtNames={c1:"สนาม 1",c2:"สนาม 2"};state.courtCount=2;
+ try{localStorage.removeItem("nextmatch_court_names")}catch(e){}
+ undoStack=[];qsel.clear();rsel.clear();render();msg("เริ่มใหม่แล้ว")
+};
+document.getElementById("addNames").onclick=()=>{const ta=document.getElementById("nameInput"),raw=ta.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(!raw.length){document.getElementById("nameStatus").textContent="⚠️ ใส่ชื่ออย่างน้อย 1 คน";return}const before=clone(state);let a=0,d=0;raw.forEach(n=>{if(state.games[n]!==undefined){d++;return}state.games[n]=0;state.hands[n]=0;state.waitSeq++;state.waitSince[n]=state.waitSeq;a++});if(a)undoStack.push(before);ta.value="";render();document.getElementById("nameStatus").textContent="เพิ่ม "+a+" คน"+(d?" · ซ้ำ "+d+" คน":"")};
+document.getElementById("addRosterQueue").onclick=addRosterQueue;
+render();
+</script>
+<style>
+.history-name{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  padding:0 2px !important;
+  border-radius:0 !important;
+  display:inline !important;
+  color:#334155 !important;
+  font-weight:850 !important;
+}
+.history-name.hand-0{color:var(--h1) !important;background:transparent !important}
+.history-name.hand-1{color:var(--h2) !important;background:transparent !important}
+.history-name.hand-2{color:var(--h3) !important;background:transparent !important}
+.history-name.hand-3{color:var(--h4) !important;background:transparent !important}
+.history-name.hand-4{color:var(--h5) !important;background:transparent !important}
+.history-name:before{display:none !important}
+</style>
+<style>
+.summary-playing{
+  color:#64748B !important;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+  margin-left:2px;
+}
+</style>
+</body></html>
+<style>
+.history-player-text{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  padding:0 !important;
+  color:inherit;
+  font-weight:700;
+}
+</style>
