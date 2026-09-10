@@ -349,7 +349,7 @@ function addRosterQueue(){
  render();
  msg(added.length?"เพิ่ม "+added.length+" คนเข้า Queue แล้ว"+(chosen.length>added.length?" · Queue เต็ม":""):"⚠️ Queue เต็ม");
 }
-function compact(){if(!state.g1.length){state.g1=state.g2;state.g2=state.g3;state.g3=[]}else if(!state.g2.length){state.g2=state.g3;state.g3=[]}}
+function compact(){if(!state.g1.length){state.g1=state.g2;state.g2=state.g3;state.g3=[]}if(!state.g2.length){state.g2=state.g3;state.g3=[]}}
 function autoStart(){
  let started=[];
  for(let c=1;c<=state.courtCount;c++){
