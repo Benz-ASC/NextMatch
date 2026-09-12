@@ -196,21 +196,6 @@ function handPicker(n){const wrap=document.createElement("div");wrap.className="
 function save(){undoStack.push(clone(state))}
 function msg(t){document.getElementById("status").textContent=t}
 
-/* LINE notification bridge — token stays on Vercel */
-const LINE_NOTIFY_URL="https://next-match-two.vercel.app/api/nextmatch-notify";
-function notifyLine(slot,names){
-  if(!["N1","N2"].includes(slot)||!Array.isArray(names)||names.length!==4)return;
-  fetch(LINE_NOTIFY_URL,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({slot,names:names.slice()})
-  }).then(async r=>{
-    if(!r.ok){
-      const detail=await r.text();
-      console.error("NEXTMATCH LINE notify failed:",r.status,detail);
-    }
-  }).catch(err=>console.error("NEXTMATCH LINE notify error:",err));
-}
 function loadCourtNames(){
  try{
   const saved=JSON.parse(localStorage.getItem("nextmatch_court_names")||"null");
