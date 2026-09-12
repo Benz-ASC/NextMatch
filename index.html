@@ -144,6 +144,13 @@ textarea{width:100%;min-height:55px;border:1px solid var(--line);border-radius:9
 <div id="courtFinishButtons" class="court-finish-buttons"></div>
 <button id="s1">ส่งเข้า N1</button><button id="s2">ส่งเข้า N2</button><button id="s3">ส่งเข้า N3</button>
 <button class="gray" id="undo">↶ UNDO</button><button class="gray" id="clear">ล้างตัวเลือก</button><button class="gray" id="reset">เริ่มใหม่</button>
+<div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;font-weight:850">
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+<input type="checkbox" id="lineNotifyToggle" checked>
+LINE แจ้งเตือน
+</label>
+<span class="muted">เปิด/ปิด</span>
+</div>
 <div id="status" class="status"></div></div>
 
 <div class="box"><details><summary>📊 สรุปจำนวนเกม — เกมน้อยก่อน / รอนานก่อน</summary><div id="summary" class="summary" style="padding-top:8px"></div></details></div>
@@ -188,6 +195,22 @@ function nameNode(n,tag="span",cls=""){const x=document.createElement(tag);x.cla
 function handPicker(n){const wrap=document.createElement("div");wrap.className="hand-picker";handColors.forEach((c,i)=>{const b=document.createElement("button");b.type="button";b.className="hand-choice hand-"+i+(hand(n)===i?" active":"");b.title="";b.onclick=(e)=>{e.stopPropagation();const before=clone(state);state.hands[n]=i;undoStack.push(before);render();document.getElementById("nameStatus").textContent="เปลี่ยนระดับสีของ "+n+" แล้ว"};wrap.appendChild(b)});return wrap}
 function save(){undoStack.push(clone(state))}
 function msg(t){document.getElementById("status").textContent=t}
+
+/* LINE notification bridge — token stays on Vercel */
+const LINE_NOTIFY_URL="https://next-match-two.vercel.app/api/nextmatch-notify";
+function notifyLine(slot,names){
+  if(!["N1","N2"].includes(slot)||!Array.isArray(names)||names.length!==4)return;
+  fetch(LINE_NOTIFY_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({slot,names:names.slice()})
+  }).then(async r=>{
+    if(!r.ok){
+      const detail=await r.text();
+      console.error("NEXTMATCH LINE notify failed:",r.status,detail);
+    }
+  }).catch(err=>console.error("NEXTMATCH LINE notify error:",err));
+}
 function loadCourtNames(){
  try{
   const saved=JSON.parse(localStorage.getItem("nextmatch_court_names")||"null");
@@ -248,6 +271,41 @@ function normalizePair(k){
    state.pairs[k]={a:state[k].slice(0,2),b:state[k].slice(2,4)}
  }
 }
+const LINE_NOTIFY_URL="https://next-match-two.vercel.app/api/nextmatch-notify";
+let lineNotifyEnabled=true;
+let lastLineState={n1:"",n2:""};
+
+function initLineNotify(){
+  const el=document.getElementById("lineNotifyToggle");
+  if(!el)return;
+  try{
+    const saved=localStorage.getItem("nextmatch_line_notify");
+    lineNotifyEnabled=saved===null?true:saved==="1";
+  }catch(e){}
+  el.checked=lineNotifyEnabled;
+  el.onchange=()=>{
+    lineNotifyEnabled=el.checked;
+    try{localStorage.setItem("nextmatch_line_notify",lineNotifyEnabled?"1":"0")}catch(e){}
+    msg(lineNotifyEnabled?"เปิด LINE แจ้งเตือนแล้ว":"ปิด LINE แจ้งเตือนแล้ว");
+  };
+}
+
+async function notifyLine(slot,names){
+  if(!lineNotifyEnabled || !Array.isArray(names) || names.length!==4)return;
+  const clean=names.map(n=>String(n).trim()).filter(Boolean);
+  if(clean.length!==4)return;
+  try{
+    const r=await fetch(LINE_NOTIFY_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({slot,names:clean})
+    });
+    if(!r.ok)console.warn("LINE notify failed:",r.status);
+  }catch(e){
+    console.warn("LINE notify error:",e);
+  }
+}
+
 function render(){
  renderCourtNames();
  for(let c=1;c<=state.courtCount;c++){const k="c"+c;normalizePair(k);renderSide(k+"a",state.pairs[k].a);renderSide(k+"b",state.pairs[k].b)}
@@ -354,6 +412,7 @@ function autoStart(){
  let started=[];
  for(let c=1;c<=state.courtCount;c++){
    if(!state["c"+c].length&&state.n1.length===4){
+     const promoted=state.n2.slice();
      state["c"+c]=state.n1.slice();
      state.pairs["c"+c]=clone(state.pairs.n1);
      state.n1=state.n2.slice();
@@ -363,12 +422,59 @@ function autoStart(){
      state.n3=[];
      state.pairs.n3=blank();
      started.push(c);
+
+     if(promoted.length===4){
+       notifyLine("N1",promoted);
+     }
    }
  }
  return started.length?started[started.length-1]:null
 }
-function send(k){if(!qsel.size)return msg("⚠️ เลือกชื่อจาก Queue ก่อน");if(state[k].length>=4)return msg(k.toUpperCase()+" เต็มแล้ว");const before=clone(state),room=4-state[k].length,move=[...qsel].slice(0,room);move.forEach(n=>{["g1","g2","g3"].some(g=>{const i=state[g].indexOf(n);if(i>=0){state[g].splice(i,1);return true}return false});state[k].push(n);qsel.delete(n)});state.pairs[k]=blank();compact();autoStart();undoStack.push(before);render();msg("ส่ง "+move.length+" คนเข้า "+k.toUpperCase())}
-function finish(c){const k="c"+c;if(!state[k].length)return msg("สนาม "+c+" ว่างอยู่แล้ว");if(state.g1.length&&state.g2.length&&state.g3.length)return msg("⚠️ QUEUE เต็ม");const before=clone(state),old=state[k].slice(),pair=clone(state.pairs[k]);state[k]=[];state.pairs[k]=blank();old.forEach(n=>{if(state.games[n]===undefined)state.games[n]=0;state.games[n]++;state.waitSeq++;state.waitSince[n]=state.waitSeq});if(old.length===4)state.matchHistory.push({court:c,courtName:state.courtNames["c"+c]||("สนาม "+c),team1:pair.a.slice(),team2:pair.b.slice()});if(!state.g1.length)state.g1=old;else if(!state.g2.length)state.g2=old;else state.g3=old;compact();autoStart();qsel.clear();undoStack.push(before);render();msg("สนาม "+c+" จบ → ผู้เล่นเข้า Queue")}
+function send(k){
+ if(!qsel.size)return msg("⚠️ เลือกชื่อจาก Queue ก่อน");
+ if(state[k].length>=4)return msg(k.toUpperCase()+" เต็มแล้ว");
+ const before=clone(state),room=4-state[k].length,move=[...qsel].slice(0,room);
+ move.forEach(n=>{
+   ["g1","g2","g3"].some(g=>{
+     const i=state[g].indexOf(n);
+     if(i>=0){state[g].splice(i,1);return true}
+     return false
+   });
+   state[k].push(n);
+   qsel.delete(n)
+ });
+ state.pairs[k]=blank();
+ compact();
+ autoStart();
+ undoStack.push(before);
+ render();
+ msg("ส่ง "+move.length+" คนเข้า "+k.toUpperCase());
+
+ if(k==="n1" && state.n1.length===4 && before.n1.length<4){
+   notifyLine("N1",state.n1);
+ }
+ if(k==="n2" && state.n2.length===4 && before.n2.length<4){
+   notifyLine("N2",state.n2);
+ }
+}
+function finish(c){
+  const k="c"+c;if(!state[k].length)return msg("สนาม "+c+" ว่างอยู่แล้ว");
+  if(state.g1.length&&state.g2.length&&state.g3.length)return msg("⚠️ QUEUE เต็ม");
+  const before=clone(state),old=state[k].slice(),pair=clone(state.pairs[k]);
+  state[k]=[];state.pairs[k]=blank();
+  old.forEach(n=>{if(state.games[n]===undefined)state.games[n]=0;state.games[n]++;state.waitSeq++;state.waitSince[n]=state.waitSeq});
+  if(old.length===4)state.matchHistory.push({court:c,courtName:state.courtNames["c"+c]||("สนาม "+c),team1:pair.a.slice(),team2:pair.b.slice()});
+  if(!state.g1.length)state.g1=old;else if(!state.g2.length)state.g2=old;else state.g3=old;
+  compact();
+
+  const n1BeforeAuto=state.n1.slice(),n2BeforeAuto=state.n2.slice();
+  autoStart();
+
+  /* A finish can cause N2 to move up into N1. */
+  if(n1BeforeAuto.length===4 && state.n1.length===4 && n2BeforeAuto.length===4 && state.n1.join("\u0000")===n2BeforeAuto.join("\u0000"))notifyLine("N1",state.n1);
+
+  qsel.clear();undoStack.push(before);render();msg("สนาม "+c+" จบ → ผู้เล่นเข้า Queue");
+}
 function openPair(k){if(state[k].length!==4)return;pairTarget=k;tempA=state.pairs[k].a.slice();tempB=state.pairs[k].b.slice();document.getElementById("pairTitle").textContent="จัดคู่ "+k.toUpperCase();renderModal();document.getElementById("pairModal").classList.add("show")}
 function renderModal(){
  const a=document.getElementById("team1"), b=document.getElementById("team2"), hint=document.getElementById("pairHint");
@@ -412,6 +518,7 @@ document.getElementById("pairConfirm").addEventListener("click",function(){
  msg("จัดคู่ "+tempA.join(" + ")+" VS "+tempB.join(" + ")+" แล้ว");
 });
 loadCourtNames();
+initLineNotify();
 document.getElementById("s1").onclick=()=>send("n1");document.getElementById("s2").onclick=()=>send("n2");document.getElementById("s3").onclick=()=>send("n3");
 
 document.getElementById("addCourt").onclick=()=>{if(state.courtCount>=8)return msg("⚠️ เพิ่มได้สูงสุด 8 สนาม");const before=clone(state);state.courtCount++;const k="c"+state.courtCount;state[k]=[];state.pairs[k]=blank();state.courtNames[k]="สนาม "+state.courtCount;undoStack.push(before);render();msg("เพิ่มสนามแล้ว")};
