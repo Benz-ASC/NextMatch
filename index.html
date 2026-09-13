@@ -140,7 +140,7 @@ textarea{width:100%;min-height:55px;border:1px solid var(--line);border-radius:9
 <div class="box"><h2>⏭️ NEXTMATCH</h2><div id="next"></div><div class="muted">ครบ 4 คนแล้ว กด “จัดคู่” เพื่อกำหนดฝั่ง</div></div>
 <div class="box"><h2>🚶 QUEUE</h2><div id="queue" class="queue"></div></div>
 
-<div class="box controls"><h2>ควบคุม</h2>
+<div class="box controls"><h2>ควบคุม</h2><label style="display:inline-flex;align-items:center;gap:7px;margin:0 0 10px 0;font-weight:800"><input type="checkbox" id="lineNotifyToggle" checked> LINE แจ้งเตือน</label>
 <div id="courtFinishButtons" class="court-finish-buttons"></div>
 <button id="s1">ส่งเข้า N1</button><button id="s2">ส่งเข้า N2</button><button id="s3">ส่งเข้า N3</button>
 <button class="gray" id="undo">↶ UNDO</button><button class="gray" id="clear">ล้างตัวเลือก</button><button class="gray" id="reset">เริ่มใหม่</button>
@@ -179,6 +179,19 @@ const initial={
 };
 let state=JSON.parse(JSON.stringify(initial)),qsel=new Set(),rsel=new Set(),undoStack=[];
 let pairTarget=null,tempA=[],tempB=[];
+
+// LINE notification bridge — token stays on Vercel
+const LINE_NOTIFY_URL="https://next-match-two.vercel.app/api/nextmatch-notify";
+let lineNotifyEnabled=true;
+
+function notifyLine(slot,names){
+  if(!lineNotifyEnabled || !Array.isArray(names) || names.length!==4) return;
+  fetch(LINE_NOTIFY_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({slot,names})
+  }).catch(()=>{});
+}
 
 function clone(x){return JSON.parse(JSON.stringify(x))}
 const handColors=["#8A929B","#B77900","#16803C","#2563C7","#111827"];
@@ -356,6 +369,7 @@ function promoteNext(){
  if(!state.n1.length && state.n2.length){
    state.n1=state.n2.slice();
    state.pairs.n1=clone(state.pairs.n2);
+   notifyLine("N1",state.n1);
    state.n2=state.n3.slice();
    state.pairs.n2=clone(state.pairs.n3);
    state.n3=[];
@@ -376,6 +390,7 @@ function autoStart(){
    // Shift NEXTMATCH forward immediately after N1 starts.
    state.n1=state.n2.slice();
    state.pairs.n1=clone(state.pairs.n2);
+   if(state.n1.length===4)notifyLine("N1",state.n1);
    state.n2=state.n3.slice();
    state.pairs.n2=clone(state.pairs.n3);
    state.n3=[];
@@ -388,7 +403,7 @@ function autoStart(){
  }
  return started.length?started[started.length-1]:null
 }
-function send(k){if(!qsel.size)return msg("⚠️ เลือกชื่อจาก Queue ก่อน");if(state[k].length>=4)return msg(k.toUpperCase()+" เต็มแล้ว");const before=clone(state),room=4-state[k].length,move=[...qsel].slice(0,room);move.forEach(n=>{["g1","g2","g3"].some(g=>{const i=state[g].indexOf(n);if(i>=0){state[g].splice(i,1);return true}return false});state[k].push(n);qsel.delete(n)});state.pairs[k]=blank();compact();autoStart();undoStack.push(before);render();msg("ส่ง "+move.length+" คนเข้า "+k.toUpperCase())}
+function send(k){if(!qsel.size)return msg("⚠️ เลือกชื่อจาก Queue ก่อน");if(state[k].length>=4)return msg(k.toUpperCase()+" เต็มแล้ว");const before=clone(state),room=4-state[k].length,move=[...qsel].slice(0,room);move.forEach(n=>{["g1","g2","g3"].some(g=>{const i=state[g].indexOf(n);if(i>=0){state[g].splice(i,1);return true}return false});state[k].push(n);qsel.delete(n)});state.pairs[k]=blank();compact();if(state[k].length===4)notifyLine(k.toUpperCase(),state[k]);autoStart();undoStack.push(before);render();msg("ส่ง "+move.length+" คนเข้า "+k.toUpperCase())}
 function finish(c){const k="c"+c;if(!state[k].length)return msg("สนาม "+c+" ว่างอยู่แล้ว");if(state.g1.length&&state.g2.length&&state.g3.length)return msg("⚠️ QUEUE เต็ม");const before=clone(state),old=state[k].slice(),pair=clone(state.pairs[k]);state[k]=[];state.pairs[k]=blank();old.forEach(n=>{if(state.games[n]===undefined)state.games[n]=0;state.games[n]++;state.waitSeq++;state.waitSince[n]=state.waitSeq});if(old.length===4)state.matchHistory.push({court:c,courtName:state.courtNames["c"+c]||("สนาม "+c),team1:pair.a.slice(),team2:pair.b.slice()});if(!state.g1.length)state.g1=old;else if(!state.g2.length)state.g2=old;else state.g3=old;compact();autoStart();qsel.clear();undoStack.push(before);render();msg("สนาม "+c+" จบ → ผู้เล่นเข้า Queue")}
 function openPair(k){if(state[k].length!==4)return;pairTarget=k;tempA=state.pairs[k].a.slice();tempB=state.pairs[k].b.slice();document.getElementById("pairTitle").textContent="จัดคู่ "+k.toUpperCase();renderModal();document.getElementById("pairModal").classList.add("show")}
 function renderModal(){
@@ -447,6 +462,11 @@ document.getElementById("reset").onclick=()=>{
 };
 document.getElementById("addNames").onclick=()=>{const ta=document.getElementById("nameInput"),raw=ta.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(!raw.length){document.getElementById("nameStatus").textContent="⚠️ ใส่ชื่ออย่างน้อย 1 คน";return}const before=clone(state);let a=0,d=0;raw.forEach(n=>{if(state.games[n]!==undefined){d++;return}state.games[n]=0;state.hands[n]=0;state.waitSeq++;state.waitSince[n]=state.waitSeq;a++});if(a)undoStack.push(before);ta.value="";render();document.getElementById("nameStatus").textContent="เพิ่ม "+a+" คน"+(d?" · ซ้ำ "+d+" คน":"")};
 document.getElementById("addRosterQueue").onclick=addRosterQueue;
+const lineToggle=document.getElementById("lineNotifyToggle");
+if(lineToggle){
+  lineNotifyEnabled=lineToggle.checked;
+  lineToggle.onchange=()=>{lineNotifyEnabled=lineToggle.checked;msg(lineNotifyEnabled?"เปิด LINE แจ้งเตือนแล้ว":"ปิด LINE แจ้งเตือนแล้ว")};
+}
 render();
 </script>
 <style>
